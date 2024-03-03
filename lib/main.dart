@@ -51,6 +51,28 @@ class _GroupListScreenState extends State<GroupListScreen> {
             );
           }).toList(),
         ),
+        actions: <Widget>[
+          IconButton(
+            icon: Icon(Icons.edit),
+            onPressed: () {
+              if (selectedGroup == null) {
+                _showNoGroupSelectedDialog(context);
+              } else {
+                _showRenameGroupDialog(context);
+              }
+            },
+          ),
+          IconButton(
+            icon: Icon(Icons.delete),
+            onPressed: () {
+              if (selectedGroup == null) {
+                _showNoGroupSelectedDialog(context);
+              } else {
+                _showDeleteGroupDialog(context);
+              }
+            },
+          ),
+        ],
       ),
       body: selectedGroup != null
           ? Column(
@@ -143,6 +165,7 @@ class _GroupListScreenState extends State<GroupListScreen> {
                         Group newGroup = Group(name: groupName, members: []);
                         setState(() {
                           groups.add(newGroup);
+                          selectedGroup = newGroup; // Select the newly created group
                         });
                         Navigator.of(context).pop();
                       }
@@ -156,6 +179,94 @@ class _GroupListScreenState extends State<GroupListScreen> {
         tooltip: 'Add Group',
         child: Icon(Icons.add),
       ),
+    );
+  }
+
+  void _showNoGroupSelectedDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('No Group Selected'),
+          content: Text('Please select a group before renaming or deleting.'),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('OK'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showRenameGroupDialog(BuildContext context) {
+    String newGroupName = selectedGroup!.name;
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Rename Group'),
+          content: TextField(
+            onChanged: (value) {
+              newGroupName = value;
+            },
+            decoration: InputDecoration(hintText: 'New Group Name'),
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  selectedGroup!.name = newGroupName;
+                });
+                Navigator.of(context).pop();
+              },
+              child: Text('Rename'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _showDeleteGroupDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Delete Group'),
+          content: Text('Are you sure you want to delete the group "${selectedGroup!.name}"?'),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  groups.remove(selectedGroup);
+                  selectedGroup = null;
+                });
+                Navigator.of(context).pop();
+              },
+              child: Text(
+                'Delete',
+                style: TextStyle(color: Colors.red),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
