@@ -1,5 +1,10 @@
+// lib/main.dart
+
+import 'dart:math';
+
 import 'package:flutter/material.dart';
-import 'friend_group.dart';
+import 'group.dart';
+import 'group_list.dart';
 
 void main() {
   runApp(BoardGameAssistantApp());
@@ -13,77 +18,169 @@ class BoardGameAssistantApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: HomePage(),
+      home: GroupListScreen(),
     );
   }
 }
 
-class HomePage extends StatefulWidget {
+class GroupListScreen extends StatefulWidget {
   @override
-  _HomePageState createState() => _HomePageState();
+  _GroupListScreenState createState() => _GroupListScreenState();
 }
 
-class _HomePageState extends State<HomePage> {
-  List<FriendGroup> friendGroups = [];
+class _GroupListScreenState extends State<GroupListScreen> {
+  List<Group> groups = [];
+  Group? selectedGroup;
+  bool shufflePressed = false;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Board Game Assistant'),
+        title: DropdownButton(
+          value: selectedGroup,
+          onChanged: (newValue) {
+            setState(() {
+              selectedGroup = newValue as Group?;
+            });
+          },
+          items: groups.map<DropdownMenuItem<Group>>((Group group) {
+            return DropdownMenuItem<Group>(
+              value: group,
+              child: Text(group.name),
+            );
+          }).toList(),
+        ),
       ),
-      body: ListView.builder(
-        itemCount: friendGroups.length,
-        itemBuilder: (context, index) {
-          return ListTile(
-            title: Text(friendGroups[index].name),
-            onTap: () {
-              // Add functionality to switch to the selected group
+      body: selectedGroup != null
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                Expanded(
+                  child: ListView.separated(
+                    itemCount: selectedGroup!.members.length + 1,
+                    itemBuilder: (context, index) {
+                      if (index < selectedGroup!.members.length) {
+                        return MemberTile(
+                          memberNumber: index + 1,
+                          memberName: selectedGroup!.members[index],
+                          isFirstPlayer: shufflePressed && index == 0,
+                        );
+                      } else {
+                        return Padding(
+                          padding: const EdgeInsets.all(8.0),
+                          child: TextField(
+                            decoration: InputDecoration(
+                              hintText: 'Add new member',
+                            ),
+                            onSubmitted: (String memberName) {
+                              setState(() {
+                                selectedGroup!.members.add(memberName);
+                              });
+                            },
+                          ),
+                        );
+                      }
+                    },
+                    separatorBuilder: (context, index) {
+                      if (index == selectedGroup!.members.length) {
+                        return Divider(
+                          height: 0,
+                        );
+                      } else {
+                        return Divider();
+                      }
+                    },
+                  ),
+                ),
+                Align(
+                  alignment: Alignment.bottomLeft,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: FloatingActionButton(
+                      onPressed: () {
+                        setState(() {
+                          selectedGroup!.members.shuffle();
+                          shufflePressed = true;
+                        });
+                      },
+                      tooltip: 'Shuffle Members',
+                      child: Icon(Icons.shuffle),
+                    ),
+                  ),
+                ),
+              ],
+            )
+          : Center(
+              child: Text('No group selected'),
+            ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          showDialog(
+            context: context,
+            builder: (BuildContext context) {
+              String groupName = '';
+              return AlertDialog(
+                title: Text('Enter Group Name'),
+                content: TextField(
+                  onChanged: (value) {
+                    groupName = value;
+                  },
+                  decoration: InputDecoration(hintText: 'Group Name'),
+                ),
+                actions: <Widget>[
+                  TextButton(
+                    child: Text('Cancel'),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
+                  ),
+                  TextButton(
+                    child: Text('Create'),
+                    onPressed: () {
+                      // Create the group and add it to the list
+                      if (groupName.isNotEmpty) {
+                        Group newGroup = Group(name: groupName, members: []);
+                        setState(() {
+                          groups.add(newGroup);
+                        });
+                        Navigator.of(context).pop();
+                      }
+                    },
+                  ),
+                ],
+              );
             },
           );
         },
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          _createNewGroup(context);
-        },
+        tooltip: 'Add Group',
         child: Icon(Icons.add),
       ),
     );
   }
+}
 
-  void _createNewGroup(BuildContext context) {
-    // Show a dialog to create a new friend group
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Create New Group'),
-        content: TextField(
-          decoration: InputDecoration(labelText: 'Group Name'),
-          onChanged: (value) {
-            // Handle changes in group name
-          },
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-            },
-            child: Text('Cancel'),
+class MemberTile extends StatelessWidget {
+  final int memberNumber;
+  final String memberName;
+  final bool isFirstPlayer;
+
+  MemberTile({
+    required this.memberNumber,
+    required this.memberName,
+    required this.isFirstPlayer,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      title: Row(
+        children: [
+          Text(
+            '$memberNumber. $memberName',
+            style: isFirstPlayer ? TextStyle(fontWeight: FontWeight.bold) : null,
           ),
-          TextButton(
-            onPressed: () {
-              // Add functionality to create a new friend group
-              setState(() {
-                // Add the new friend group to the list
-                String groupName = ''; // Get the group name from the text field
-                FriendGroup newGroup = FriendGroup(groupName, []);
-                friendGroups.add(newGroup);
-              });
-              Navigator.of(context).pop();
-            },
-            child: Text('Create'),
-          ),
+          if (isFirstPlayer) Text(' (First Player)', style: TextStyle(fontWeight: FontWeight.bold)),
         ],
       ),
     );
