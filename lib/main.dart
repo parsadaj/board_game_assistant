@@ -154,7 +154,6 @@ class _GroupListScreenState extends State<GroupListScreen> {
           : Center(
               child: Text('No group selected'),
             ),
-                content: TextField(
       bottomNavigationBar: BottomAppBar(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16.0),
