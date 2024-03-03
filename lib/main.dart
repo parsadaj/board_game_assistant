@@ -32,6 +32,7 @@ class _GroupListScreenState extends State<GroupListScreen> {
   List<Group> groups = [];
   Group? selectedGroup;
   bool shufflePressed = false;
+  bool editingMode = false;
 
   @override
   Widget build(BuildContext context) {
@@ -83,15 +84,31 @@ class _GroupListScreenState extends State<GroupListScreen> {
                     itemCount: selectedGroup!.members.length + 1,
                     itemBuilder: (context, index) {
                       if (index < selectedGroup!.members.length) {
-                        return MemberTile(
-                          memberNumber: index + 1,
-                          memberName: selectedGroup!.members[index],
-                          isFirstPlayer: shufflePressed && index == 0,
-                        );
+                        return editingMode
+                            ? EditingMemberTile(
+                                memberNumber: index + 1,
+                                memberName: selectedGroup!.members[index],
+                                onNameChanged: (newName) {
+                                  setState(() {
+                                    selectedGroup!.members[index] = newName;
+                                  });
+                                },
+                                onDeletePressed: () {
+                                  setState(() {
+                                    selectedGroup!.members.removeAt(index);
+                                  });
+                                },
+                              )
+                            : MemberTile(
+                                memberNumber: index + 1,
+                                memberName: selectedGroup!.members[index],
+                                isFirstPlayer: shufflePressed && index == 0,
+                              );
                       } else {
                         return Padding(
                           padding: const EdgeInsets.all(8.0),
                           child: TextField(
+                            enabled: editingMode,
                             decoration: InputDecoration(
                               hintText: 'Add new member',
                             ),
@@ -113,6 +130,21 @@ class _GroupListScreenState extends State<GroupListScreen> {
                         return Divider();
                       }
                     },
+                  ),
+                ),
+                Align(
+                  alignment: Alignment.bottomLeft,
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: FloatingActionButton(
+                      onPressed: () {
+                        setState(() {
+                          editingMode = !editingMode;
+                        });
+                      },
+                      tooltip: editingMode ? 'Done Editing' : 'Edit Members',
+                      child: Icon(editingMode ? Icons.done : Icons.edit),
+                    ),
                   ),
                 ),
                 Align(
@@ -292,6 +324,46 @@ class MemberTile extends StatelessWidget {
             style: isFirstPlayer ? TextStyle(fontWeight: FontWeight.bold) : null,
           ),
           if (isFirstPlayer) Text(' (First Player)', style: TextStyle(fontWeight: FontWeight.bold)),
+        ],
+      ),
+    );
+  }
+}
+
+class EditingMemberTile extends StatelessWidget {
+  final int memberNumber;
+  final String memberName;
+  final ValueChanged<String> onNameChanged;
+  final VoidCallback onDeletePressed;
+
+  EditingMemberTile({
+    required this.memberNumber,
+    required this.memberName,
+    required this.onNameChanged,
+    required this.onDeletePressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      title: Row(
+        children: [
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: TextField(
+                onChanged: onNameChanged,
+                decoration: InputDecoration(
+                  hintText: 'Member name',
+                ),
+                controller: TextEditingController(text: memberName),
+              ),
+            ),
+          ),
+          IconButton(
+            icon: Icon(Icons.delete),
+            onPressed: onDeletePressed,
+          ),
         ],
       ),
     );
