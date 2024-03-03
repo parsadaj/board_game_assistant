@@ -1,8 +1,9 @@
 // lib/main.dart
 
-import 'dart:math';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'group.dart';
 import 'group_list.dart';
 
@@ -29,10 +30,26 @@ class GroupListScreen extends StatefulWidget {
 }
 
 class _GroupListScreenState extends State<GroupListScreen> {
-  List<Group> groups = [];
+  late List<Group> groups = [];
   Group? selectedGroup;
   bool shufflePressed = false;
   bool editingMode = false;
+
+  @override
+  void initState() {
+    super.initState();
+    loadGroups();
+  }
+
+  Future<void> loadGroups() async {
+    final prefs = await SharedPreferences.getInstance();
+    final List<String>? groupsJson = prefs.getStringList('groups');
+    if (groupsJson != null) {
+      setState(() {
+        groups = groupsJson.map((json) => Group.fromJson(jsonDecode(json))).toList();
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -132,86 +149,98 @@ class _GroupListScreenState extends State<GroupListScreen> {
                     },
                   ),
                 ),
-                Align(
-                  alignment: Alignment.bottomLeft,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: FloatingActionButton(
-                      onPressed: () {
-                        setState(() {
-                          editingMode = !editingMode;
-                        });
-                      },
-                      tooltip: editingMode ? 'Done Editing' : 'Edit Members',
-                      child: Icon(editingMode ? Icons.done : Icons.edit),
-                    ),
-                  ),
-                ),
-                Align(
-                  alignment: Alignment.bottomLeft,
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: FloatingActionButton(
-                      onPressed: () {
-                        setState(() {
-                          selectedGroup!.members.shuffle();
-                          shufflePressed = true;
-                        });
-                      },
-                      tooltip: 'Shuffle Members',
-                      child: Icon(Icons.shuffle),
-                    ),
-                  ),
-                ),
               ],
             )
           : Center(
               child: Text('No group selected'),
             ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          showDialog(
-            context: context,
-            builder: (BuildContext context) {
-              String groupName = '';
-              return AlertDialog(
-                title: Text('Enter Group Name'),
                 content: TextField(
-                  onChanged: (value) {
-                    groupName = value;
-                  },
-                  decoration: InputDecoration(hintText: 'Group Name'),
-                ),
-                actions: <Widget>[
-                  TextButton(
-                    child: Text('Cancel'),
+      bottomNavigationBar: BottomAppBar(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+                            FloatingActionButton(
+                onPressed: () {
+                  setState(() {
+                    selectedGroup!.members.shuffle();
+                    shufflePressed = true;
+                  });
+                },
+                tooltip: 'Shuffle Members',
+                child: Icon(Icons.shuffle),
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  FloatingActionButton(
                     onPressed: () {
-                      Navigator.of(context).pop();
+                      setState(() {
+                        editingMode = !editingMode;
+                        saveGroups();
+                      });
                     },
+                    tooltip: editingMode ? 'Done Editing' : 'Edit Members',
+                    child: Icon(editingMode ? Icons.done : Icons.edit),
                   ),
-                  TextButton(
-                    child: Text('Create'),
+                  SizedBox(width: 16), // Add some padding here
+                  FloatingActionButton(
                     onPressed: () {
-                      // Create the group and add it to the list
-                      if (groupName.isNotEmpty) {
-                        Group newGroup = Group(name: groupName, members: []);
-                        setState(() {
-                          groups.add(newGroup);
-                          selectedGroup = newGroup; // Select the newly created group
-                        });
-                        Navigator.of(context).pop();
-                      }
+                      showDialog(
+                        context: context,
+                        builder: (BuildContext context) {
+                          String groupName = '';
+                          return AlertDialog(
+                            title: Text('Enter Group Name'),
+                            content: TextField(
+                              onChanged: (value) {
+                                groupName = value;
+                              },
+                              decoration: InputDecoration(hintText: 'Group Name'),
+                            ),
+                            actions: <Widget>[
+                              TextButton(
+                                child: Text('Cancel'),
+                                onPressed: () {
+                                  Navigator.of(context).pop();
+                                },
+                              ),
+                              TextButton(
+                                child: Text('Create'),
+                                onPressed: () {
+                                  if (groupName.isNotEmpty) {
+                                    Group newGroup = Group(name: groupName, members: []);
+                                    setState(() {
+                                      groups.add(newGroup);
+                                      selectedGroup = newGroup;
+                                    });
+                                    saveGroups();
+                                    Navigator.of(context).pop();
+                                  }
+                                },
+                              ),
+                            ],
+                          );
+                        },
+                      );
                     },
+                    tooltip: 'Add Group',
+                    child: Icon(Icons.add),
                   ),
-                ],
-              );
-            },
-          );
-        },
-        tooltip: 'Add Group',
-        child: Icon(Icons.add),
+                ]
+              )
+            ],
+          ),
+        ),
       ),
     );
+  }
+
+  Future<void> saveGroups() async {
+    final prefs = await SharedPreferences.getInstance();
+    final List<String> groupsJson = groups.map((group) => jsonEncode(group.toJson())).toList();
+    prefs.setStringList('groups', groupsJson);
   }
 
   void _showNoGroupSelectedDialog(BuildContext context) {
@@ -259,6 +288,7 @@ class _GroupListScreenState extends State<GroupListScreen> {
                 setState(() {
                   selectedGroup!.name = newGroupName;
                 });
+                saveGroups();
                 Navigator.of(context).pop();
               },
               child: Text('Rename'),
@@ -289,6 +319,7 @@ class _GroupListScreenState extends State<GroupListScreen> {
                   groups.remove(selectedGroup);
                   selectedGroup = null;
                 });
+                saveGroups();
                 Navigator.of(context).pop();
               },
               child: Text(
